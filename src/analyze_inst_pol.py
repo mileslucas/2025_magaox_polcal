@@ -1,6 +1,6 @@
 import numpy as np
 import plot_utils
-import proplot as pro
+import ultraplot as pro
 import paths
 import pandas as pd
 import mueller_matrices as mm

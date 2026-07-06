@@ -1,5 +1,5 @@
 import pandas as pd
-import proplot as pro
+import ultraplot as pro
 import numpy as np
 
 import paths
@@ -24,12 +24,12 @@ def get_model_curve(samples, hwp_str, imr_ang: float, N=1000):
 
 
 def plot_table(table, filt_name, samples, lp=True):
-    table = table.sort_values(["hwp", "imr"])
+    table = table.sort_values(["hwp_ang", "imr_ang"])
 
-    groups = table.groupby("hwp")
+    groups = table.groupby("hwp_ang")
 
     cmap = pro.Colormap("inferno", left=0.2, right=0.8, discrete=True)
-    colors = cmap(np.linspace(0, 1, len(table["hwp"].unique())))
+    colors = cmap(np.linspace(0, 1, len(table["hwp_ang"].unique())))
 
     fig, axes = pro.subplots(
         nrows=2, width="4in", height=f"{4 / 1.05}in", height_ratios=(2, 1), sharey=False
@@ -38,80 +38,104 @@ def plot_table(table, filt_name, samples, lp=True):
     mse = 0
     for idx, (hwp_str, group) in enumerate(groups):
         axes[0].scatter(
-            group["imr"].values,
-            group["double_norm"].values,
-            # bardata=group["double_norm_err"],
+            group["imr_ang"].values,
+            group["double_diff"].values,
+            # bardata=group["double_diff_err"],
             c=colors[idx],
             marker="o",
             label=f"{hwp_str}",
             zorder=1000,
         )
-        test_imr = np.linspace(group["imr"].min(), group["imr"].max(), 100)
+        test_imr = np.linspace(group["imr_ang"].min(), group["imr_ang"].max(), 100)
         if samples is not None:
-            curve, curve_std = get_model_curve(samples, hwp_str, group["imr"])
+            curve, curve_std = get_model_curve(samples, hwp_str, group["imr_ang"])
             test_curve, test_std = get_model_curve(samples, hwp_str, test_imr)
         else:
             if filt_name == "r":
                 X = [
-                    -0.009476013790448247,
-                    0.4600570199618508,
-                    0.5809054504835991,
-                    0.0003840381726163845,
-                    0.7664635139372711,
-                    0.06868191785095659,
-                    0.24486261134275322,
-                    -0.0034989763086488703,
-                    8.232615066370506e-05,
-                    0.4108894437539104,
-                    0.7962058116235509,
-                    0.7377096762073958,
+-0.09197337909586643,
+0.5190747298697496,
+0.8065014300951933,
+0.1877031118489375,
+0.0,
+0.0021476830130610198,
+0.037478361091875426,
+0.4639795100540668,
+0.02060977780460021,
+8.791065290913073e-06,
+5.958098846355867e-06,
+-0.4634550959338772,
+0.006517973123873337,
+0.0004185212057480607,
+0.00013622005166947446,
+-0.13445991494969717,
+0.0806267106308508,
+9.603871140236828e-05,
+0.1054756750812547,
+0.999879639085673,
                 ]
 
             elif filt_name == "i":
                 X = [
-                    -0.0032664002024398514,
-                    0.4643883673835176,
-                    0.5977157796493537,
-                    0.0025640438892886993,
-                    0.6862109309309716,
-                    0.18617537190994693,
-                    0.2847442035223146,
-                    -0.004263712374693801,
-                    0.5497421259867903,
-                    0.26720659407740677,
-                    0.6815646684652745,
-                    0.944406385043694,
+-0.0028521364309477197,
+0.539908170676348,
+0.7436338744359774,
+-0.00018695943606796185,
+1.4734528970995503e-05,
+0.0058569661159633074,
+0.008856627653649335,
+0.003719543302630277,
+0.03262544185756816,
+0.002631050859523087,
+0.017941712942315148,
+0.005168978128238624,
+0.0034152312165470758,
+0.010178489549924478,
+0.03247753222378161,
+0.0030182743512139967,
+0.0026476742022171445,
+0.01177622075454878,
+0.001954271916517009,
+1.0,
                 ]
             elif filt_name == "z":
                 X = [
-                    0.0003257816304214747,
-                    0.49493813939135,
-                    0.5590224291792651,
-                    0.0020298679467539355,
-                    0.28115800304344984,
-                    0.36859618523344684,
-                    0.37509136820947164,
-                    -0.00024504894314898685,
-                    0.9993863660727822,
-                    0.2875288549142562,
-                    0.7111705511572872,
-                    0.9747455202147504,
+0.0004594422984608936,
+0.5399840430098184,
+0.7742850960603289,
+1.0472965571277279e-05,
+0.01007936760455377,
+0.02108081596919878,
+0.025680846096936376,
+0.017639289740441447,
+0.009717940261215665,
+1.5161586638046216e-05,
+0.01871785394584312,
+0.012264937037726732,
+0.00968149441608107,
+0.0,
+0.006703992824105897,
+-0.0010610662819890912,
+0.0002660676668102255,
+0.0,
+0.016905875373672795,
+0.9999387187296811,
                 ]
             S_in = np.array([1, 1, 0, 0])
             curve = np.array(
-                [fit_model_B.model(X, hwp_str, i, S_in) for i in group["imr"]]
+                [fit_model_B.model(X, hwp_str, i, S_in) for i in group["imr_ang"]]
             )
             test_curve = np.array(
                 [fit_model_B.model(X, hwp_str, i, S_in) for i in test_imr]
             )
 
-        resids = group["double_norm"].values - curve
+        resids = group["double_diff"].values - curve
         mse += np.nanmean(resids**2) / len(groups)
 
         hwp_str_tokens = hwp_str.split("-")
         label = f"{hwp_str_tokens[0]}°-{hwp_str_tokens[1]}°"
         axes[1].scatter(
-            group["imr"].values, resids, c=colors[idx], zorder=999, label=label
+            group["imr_ang"].values, resids, c=colors[idx], zorder=999, label=label
         )
 
         axes[0].plot(
@@ -124,7 +148,7 @@ def plot_table(table, filt_name, samples, lp=True):
     axes[1].text(
         0.97,
         1.02,
-        f"MSE={mse * 100:.01f}%",
+        f"MSE={mse * 100:.02f}%",
         fontsize=8,
         color="0.2",
         ha="right",
@@ -136,7 +160,7 @@ def plot_table(table, filt_name, samples, lp=True):
 
     axes[1].legend(ncols=3, loc="bottom", title="HWP pair", fontsize=8)
 
-    title = f"2025/11/26 MagAO-X LP=0° {filt_name}-band"
+    title = f"2026/03/21 MagAO-X LP=0° {filt_name}-band"
     if not lp:
         title = title.replace("LP=0°", "No LP")
     axes[0].format(
@@ -155,24 +179,17 @@ def plot_table(table, filt_name, samples, lp=True):
 
     plot_utils.save_figure(
         fig,
-        paths.figures / f"20251126_magaox_{'lp0' if lp else 'nolp'}_{filt_name}_model",
+        paths.figures / f"20260321_magaox_{'lp0' if lp else 'nolp'}_{filt_name}_model",
     )
 
     pro.close()
 
 
 if __name__ == "__main__":
-    table = pd.read_csv(paths.data / "20251126_magaox_lp0_double_diffs.csv")
+    table_r = pd.read_csv(paths.data / "20260321_pdi_calib_lpV_double-diff_r.csv")
+    table_i = pd.read_csv(paths.data / "20260321_pdi_calib_lpV_double-diff_i.csv")
+    table_z = pd.read_csv(paths.data / "20260321_pdi_calib_lpV_double-diff_z.csv")
 
-    for filt_name, group in table.groupby("filter"):
-        try:
-            raise KeyError()
-            npz_data = np.load(paths.data / f"model_B_chains_{filt_name}.npz")
-            plot_table(group, filt_name, samples=npz_data["samples"], lp=True)
-        except Exception:
-            plot_table(group, filt_name, samples=None, lp=True)
-
-    # table = pd.read_csv(paths.data / "20251126_magaox_nolp_single_diffs.csv")
-
-    # for filt_name, group in table.groupby("filter"):
-    #     plot_table(group, filt_name, lp=False)
+    plot_table(table_r, "r", samples=None, lp=True)
+    plot_table(table_i, "i", samples=None, lp=True)
+    plot_table(table_z, "z", samples=None, lp=True)

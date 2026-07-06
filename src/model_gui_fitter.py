@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, TextBox
 import numpy as np
-import proplot as pro
+import ultraplot as pro
 import pandas as pd
 
 import fit_model_A

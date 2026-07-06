@@ -1,4 +1,4 @@
-import proplot as pro
+import ultraplot as pro
 
 
 def setup_plots():

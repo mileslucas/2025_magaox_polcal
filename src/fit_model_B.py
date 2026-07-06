@@ -18,13 +18,21 @@ fit_B = fit_utils.BaseModel.fromdict(
         # "m4_diatt": [(-1, 1), 1e-2, stats.uniform(-1, 2)],
         "m4_retardance": [(0, 1), 0.5, stats.uniform(0, 1)],
         "imr_offset": [(-5, 100), 0, stats.uniform(-180, 360)],
-        "imr_retardance_h": [(0, 1), 0.5, stats.uniform(0, 1)],
-        "imr_retardance_45": [(0, 1), 0.5, stats.uniform(0, 1)],
-        "imr_retardance_r": [(0, 1), 0.5, stats.uniform(0, 1)],
+        "imr_retardance_h": [(0, 1), 1e-2, stats.uniform(0, 1)],
+        "imr_retardance_45": [(0, 1), 1e-2, stats.uniform(0, 1)],
+        "imr_retardance_r": [(0, 1), 1e-2, stats.uniform(0, 1)],
+        "static_offset": [(-10, 10), 1e-2, stats.norm(0, 3)],
+        "static_retardance_h": [(0, 1), 1e-2, stats.uniform(0, 1)],
+        "static_retardance_45": [(0, 1), 1e-2, stats.uniform(0, 1)],
+        "static_retardance_r": [(0, 1), 1e-2, stats.uniform(0, 1)],
+        "qwp_offset": [(-10, 10), 1e-2, stats.norm(0, 3)],
+        "qwp_retardance_h": [(0, 1), 1e-2, stats.uniform(0, 1)],
+        "qwp_retardance_45": [(0, 1), 1e-2, stats.uniform(0, 1)],
+        "qwp_retardance_r": [(0, 1), 1e-2, stats.uniform(0, 1)],
         "inst_offset": [(-180, 180), 0, stats.uniform(0, 360)],
-        "inst_retardance_h": [(0, 1), 0.5, stats.uniform(0, 1)],
-        "inst_retardance_45": [(0, 1), 0.5, stats.uniform(0, 1)],
-        "inst_retardance_r": [(0, 1), 0.5, stats.uniform(0, 1)],
+        "inst_retardance_h": [(0, 1), 1e-2, stats.uniform(0, 1)],
+        "inst_retardance_45": [(0, 1), 1e-2, stats.uniform(0, 1)],
+        "inst_retardance_r": [(0, 1), 1e-2, stats.uniform(0, 1)],
         "pbs_extinction": [(0, 1), 1 - 1 / 500, stats.uniform(0, 1)],
     }
 )
@@ -43,6 +51,14 @@ def model(X, hwp_str, imr_deg, S_in):
         imr_retardance_h,
         imr_retardance_45,
         imr_retardance_r,
+        static_offset,
+        static_retardance_h,
+        static_retardance_45,
+        static_retardance_r,
+        qwp_offset,
+        qwp_retardance_h,
+        qwp_retardance_45,
+        qwp_retardance_r,
         inst_offset,
         inst_retardance_h,
         inst_retardance_45,
@@ -79,7 +95,7 @@ def model(X, hwp_str, imr_deg, S_in):
         delta=m4_retardance * 2 * np.pi
     )
 
-    # imr_diatt = 0
+    imr_diatt = 0
     # mm_imr = mm.generic(
     #     imr_theta,
     #     imr_diatt,
@@ -91,6 +107,24 @@ def model(X, hwp_str, imr_deg, S_in):
         imr_retardance_45 * 2 * np.pi,
         imr_retardance_r * 2 * np.pi,
     )
+
+    static_theta = np.deg2rad(static_offset)
+    mm_static = mm.elliptical_retarder(
+        static_theta,
+        static_retardance_h * 2 * np.pi,
+        static_retardance_45 * 2 * np.pi,
+        static_retardance_r * 2 * np.pi,
+    )
+
+    qwp_theta = np.deg2rad(qwp_offset) + imr_theta
+    mm_qwp = mm.elliptical_retarder(
+        qwp_theta,
+        qwp_retardance_h * 2 * np.pi,
+        qwp_retardance_45 * 2 * np.pi,
+        qwp_retardance_r * 2 * np.pi,
+    )
+
+
     inst_theta = np.deg2rad(inst_offset)
     mm_inst = mm.elliptical_retarder(
         inst_theta,
@@ -101,7 +135,7 @@ def model(X, hwp_str, imr_deg, S_in):
     # mm_inst = mm.generic(
     #     inst_theta,
     #     0,
-    #     inst_retardance_h * 2 * np.pi
+    #     inst_retardance * 2 * np.pi
     # )
     # mm_inst = np.eye(4)
 
@@ -117,13 +151,15 @@ def model(X, hwp_str, imr_deg, S_in):
     mm_pbs_V = mm.wollaston(ordinary=True, epsilon=np.abs(pbs_extinction))
     mm_pbs_H = mm.wollaston(ordinary=False, epsilon=np.abs(pbs_extinction))
 
-    total_mm_V1 = mm_pbs_V @ mm_inst @ mm_imr @ mm_m4 @ mm_hwp1
-    total_mm_H1 = mm_pbs_H @ mm_inst @ mm_imr @ mm_m4 @ mm_hwp1
+    mm_common = mm_inst @ mm_qwp @ mm_static @ mm_imr @ mm_m4
+
+    total_mm_V1 = mm_pbs_V @ mm_common @ mm_hwp1
+    total_mm_H1 = mm_pbs_H @ mm_common @ mm_hwp1
     mm_diff1 = total_mm_V1 - total_mm_H1
     mm_sum1 = total_mm_V1 + total_mm_H1
 
-    total_mm_V2 = mm_pbs_V @ mm_inst @ mm_imr @ mm_m4 @ mm_hwp2
-    total_mm_H2 = mm_pbs_H @ mm_inst @ mm_imr @ mm_m4 @ mm_hwp2
+    total_mm_V2 = mm_pbs_V @ mm_common @ mm_hwp2
+    total_mm_H2 = mm_pbs_H @ mm_common @ mm_hwp2
     mm_diff2 = total_mm_V2 - total_mm_H2
     mm_sum2 = total_mm_V2 + total_mm_H2
 
@@ -151,8 +187,8 @@ def log_likelihood(y_hat, y, err):
 
 
 def fit_model(table_lp0, name: str):
-    hwp_angs_lp0 = table_lp0["hwp"].values
-    imr_angs_lp0 = table_lp0["imr"].values
+    hwp_angs_lp0 = table_lp0["hwp_ang"].values
+    imr_angs_lp0 = table_lp0["imr_ang"].values
     y_values_lp0 = table_lp0["double_norm"].values
     y_err_lp0 = table_lp0["double_norm_err"].values
     y_err_lp0[y_err_lp0 == 0] = np.inf
@@ -194,10 +230,10 @@ def fit_model(table_lp0, name: str):
 
 
 def fit_model_scipy(table_lp0, name: str):
-    hwp_angs_lp0 = table_lp0["hwp"].values
-    imr_angs_lp0 = table_lp0["imr"].values
-    y_values_lp0 = table_lp0["double_norm"].values
-    y_err_lp0 = table_lp0["double_norm_err"].values
+    hwp_angs_lp0 = table_lp0["hwp_ang"].values
+    imr_angs_lp0 = table_lp0["imr_ang"].values
+    y_values_lp0 = table_lp0["double_diff"].values
+    y_err_lp0 = table_lp0["double_diff_err"].values
     y_err_lp0[y_err_lp0 == 0] = np.inf
 
     def loss(X):
@@ -226,18 +262,11 @@ def fit_model_scipy(table_lp0, name: str):
 
 
 if __name__ == "__main__":
-    table_lp0 = pd.read_csv(paths.data / "20251126_magaox_lp0_double_diffs.csv")
-    table_nolp = pd.read_csv(paths.data / "20251126_magaox_nolp_double_diffs.csv")
-
-    r_table_lp0 = table_lp0.query("filter == 'r'")
-    i_table_lp0 = table_lp0.query("filter == 'i'")
-    z_table_lp0 = table_lp0.query("filter == 'z'")
-
-    r_table_nolp = table_nolp.query("filter == 'r'")
-    i_table_nolp = table_nolp.query("filter == 'i'")
-    z_table_nolp = table_nolp.query("filter == 'z'")
+    table_r = pd.read_csv(paths.data / "20260321_pdi_calib_lpV_double-diff_r.csv")
+    table_i = pd.read_csv(paths.data / "20260321_pdi_calib_lpV_double-diff_i.csv")
+    table_z = pd.read_csv(paths.data / "20260321_pdi_calib_lpV_double-diff_z.csv")
 
     # fit_model(i_table_lp0, name="i")
-    fit_model_scipy(r_table_lp0, name="r")
-    fit_model_scipy(i_table_lp0, name="i")
-    fit_model_scipy(z_table_lp0, name="z")
+    fit_model_scipy(table_r, name="r")
+    fit_model_scipy(table_i, name="i")
+    fit_model_scipy(table_z, name="z")

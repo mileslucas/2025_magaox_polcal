@@ -1,5 +1,5 @@
 import pandas as pd
-import proplot as pro
+import ultraplot as pro
 import numpy as np
 
 import paths
